@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>S.E.N.T.I.N.E.L. - Sistema Operacional</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="css/style.css?v=2"/>
+</head>
+<body>
+
+  <!-- TELA DE INICIALIZAÇÃO S.E.N.T.I.N.E.L. -->
+  <div id="splash-screen" class="splash-container">
+    <div class="splash-content">
+      <div class="splash-logo">S.E.N.T.I.N.E.L.</div>
+      <div class="splash-acronym">
+        <span>S</span>istema <span>E</span>stratégico de <span>N</span>avegação e <span>T</span>riagem<br>
+        <span>I</span>nteligente para <span>N</span>úcleos de <span>E</span>mergências <span>L</span>ocais
+      </div>
+      <div class="splash-loader">
+        <div class="splash-progress"></div>
+      </div>
+      <div class="splash-status">INICIALIZANDO CONEXÃO SATELITAL...</div>
+    </div>
+  </div>
+
+<div id="panel">
+  <h3>📡 Central de Despacho</h3>
+  
+  <div class="tabs">
+    <button class="tab-btn active" id="btn-tab-despacho" onclick="switchTab('despacho')">Operação</button>
+    <button class="tab-btn" id="btn-tab-viaturas" onclick="switchTab('viaturas')">Frota</button>
+    <button class="tab-btn" id="btn-tab-gerenciar" onclick="switchTab('gerenciar')">Ocorrências</button>
+    <button class="tab-btn" id="btn-tab-config" onclick="switchTab('config')" style="flex: 0.3; max-width: 40px;">⚙️</button>
+  </div>
+
+  <!-- ABA: OPERAÇÃO -->
+  <div id="tab-despacho" class="tab-content active">
+    <div class="stats">
+      <div class="stat-item"><span>Viaturas Livres</span><strong id="active-count">0</strong></div>
+      <div class="stat-item"><span>Em Atendimento</span><strong id="incident-count" style="color: #ff6b6b;">0</strong></div>
+    </div>
+    
+    <div class="progress-container" title="Uso da Frota">
+      <div class="progress-fill" id="fleet-progress"></div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+      <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">Despachar Viatura Patrulha:</div>
+      <div style="display: flex; gap: 8px;">
+        <select id="spawn-type" class="ui-select" style="margin: 0; flex: 2;">
+          <option value="0">🚓 Polícia</option>
+          <option value="1">🚒 Bombeiros</option>
+          <option value="2">🚑 Ambulância</option>
+        </select>
+        <button class="btn-create" style="margin: 0;" onclick="addSelectedVehicle()">➕ Criar</button>
+      </div>
+    </div>
+    
+    <div style="font-size: 12px; color: #bbb; margin-bottom: 15px; background: rgba(255,193,7,0.1); padding: 10px; border-left: 3px solid #ffc107; border-radius: 0 8px 8px 0;">
+      🚨 <b>Sincronização de Cena:</b> Em ocorrências múltiplas, as viaturas que chegam <b>aguardam</b> no local até que todas as unidades designadas cheguem para finalizar.
+    </div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #888;">Log do Sistema</div>
+        <button onclick="clearLogs()" style="background: none; border: none; color: #bbb; cursor: pointer; font-size: 10px; text-decoration: underline;">Limpar</button>
+    </div>
+    <div class="log-container" id="activity-log"></div>
+  </div>
+
+  <!-- ABA: FROTA (VIATURAS) -->
+  <div id="tab-viaturas" class="tab-content">
+    <p style="font-size: 12px; color: #bbb; margin-top: 0;">Gerencie as viaturas ativas. Force o retorno para a base para desmobilizá-las.</p>
+    
+    <div class="filter-group">
+      <button class="filter-btn active" onclick="setFleetFilter('All')">Todas</button>
+      <button class="filter-btn" onclick="setFleetFilter(0)">Polícia</button>
+      <button class="filter-btn" onclick="setFleetFilter(1)">Bombeiros</button>
+      <button class="filter-btn" onclick="setFleetFilter(2)">SAMU</button>
+    </div>
+
+    <div id="fleet-list"></div>
+  </div>
+
+  <!-- ABA: OCORRÊNCIAS (GERENCIAR) -->
+  <div id="tab-gerenciar" class="tab-content">
+    <p style="font-size: 12px; color: #bbb; margin-top: 0;">Monitore e cancele as ocorrências em andamento.</p>
+    <div id="manage-list"></div>
+  </div>
+
+  <!-- ABA: CONFIGURAÇÕES -->
+  <div id="tab-config" class="tab-content">
+    <p style="font-size: 12px; color: #bbb; margin-top: 0;">Defina o tamanho máximo da frota. Requisições além do limite entrarão na fila de espera.</p>
+    
+    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <label style="font-size: 12px; color: #aaa; display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center;">
+            <span>🚓 Máx. Polícia:</span>
+            <input type="number" id="max-0" value="5" min="1" max="50" class="ui-select" style="width: 60px; margin: 0; padding: 2px 5px; text-align: center;">
+        </label>
+        <label style="font-size: 12px; color: #aaa; display: flex; justify-content: space-between; margin-bottom: 5px; align-items: center;">
+            <span>🚒 Máx. Bombeiros:</span>
+            <input type="number" id="max-1" value="2" min="1" max="50" class="ui-select" style="width: 60px; margin: 0; padding: 2px 5px; text-align: center;">
+        </label>
+        <label style="font-size: 12px; color: #aaa; display: flex; justify-content: space-between; align-items: center;">
+            <span>🚑 Máx. Ambulância:</span>
+            <input type="number" id="max-2" value="3" min="1" max="50" class="ui-select" style="width: 60px; margin: 0; padding: 2px 5px; text-align: center;">
+        </label>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <div style="font-size: 12px; color: #ffc107; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">Modo de Teste / Simulação</div>
+        <p style="font-size: 11px; color: #aaa; margin-top: 0; margin-bottom: 10px;">Gera chamados aleatórios e estressa a fila.</p>
+        
+        <label style="font-size: 12px; color: #fff; display: flex; align-items: center; cursor: pointer; margin-bottom: 8px;">
+            <input type="checkbox" id="toggle-sim" onchange="toggleSimulation()" style="margin-right: 8px; transform: scale(1.2);">
+            Ativar Geração Dinâmica
+        </label>
+
+        <label style="font-size: 12px; color: #fff; display: flex; align-items: center; cursor: pointer; margin-bottom: 8px;">
+            <input type="checkbox" id="toggle-autoaccept" onchange="updateSimulationConfig()" style="margin-right: 8px; transform: scale(1.2);">
+            <span style="color: #ff6b6b; font-weight: bold;">Modo Caos:</span>&nbsp;Auto-Aceitar
+        </label>
+
+        <label style="font-size: 12px; color: #fff; display: flex; align-items: center; cursor: pointer; margin-bottom: 12px;">
+            <input type="checkbox" id="toggle-autofinish" onchange="updateSimulationConfig()" style="margin-right: 8px; transform: scale(1.2);">
+            <span style="color: #28a745; font-weight: bold;">Modo Expresso:</span>&nbsp;Auto-Finalizar Verdes
+        </label>
+
+        <div style="margin-bottom: 5px;">
+            <div style="font-size: 11px; color: #bbb; display: flex; justify-content: space-between;">
+                <span>Frequência (segundos)</span>
+                <span id="freq-val">15s</span>
+            </div>
+            <input type="range" id="sim-freq" min="5" max="60" value="15" style="width: 100%;" oninput="document.getElementById('freq-val').innerText = this.value + 's'; updateSimulationConfig()">
+        </div>
+    </div>
+
+    <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <div style="font-size: 12px; color: #00d2ff; font-weight: bold; margin-bottom: 5px; text-transform: uppercase;">Aceleração do Tempo</div>
+        <div style="margin-bottom: 5px;">
+            <div style="font-size: 11px; color: #bbb; display: flex; justify-content: space-between;">
+                <span>Velocidade das Viaturas</span>
+                <span id="speed-val">1x</span>
+            </div>
+            <input type="range" id="sim-speed" min="1" max="10" value="1" style="width: 100%;" oninput="document.getElementById('speed-val').innerText = this.value + 'x'; updateSimulationConfig()">
+        </div>
+    </div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<div id="sentinel-watermark" style="position: absolute; bottom: 20px; left: 20px; z-index: 1000; pointer-events: none; user-select: none;">
+  <div style="font-weight: 900; color: rgba(255,255,255,0.7); font-size: 28px; letter-spacing: 6px; text-shadow: 0 0 10px rgba(0, 123, 255, 0.5);">S.E.N.T.I.N.E.L.</div>
+  <div style="font-size: 9px; color: rgba(255,255,255,0.4); letter-spacing: 2px; margin-top: -2px;">SISTEMA ESTRATÉGICO DE NAVEGAÇÃO E TRIAGEM INTELIGENTE</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
