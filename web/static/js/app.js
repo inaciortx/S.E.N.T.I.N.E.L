@@ -304,8 +304,20 @@
 
   function checkPendingIncidents(v) {
       const typeId = v.typeConfig.id;
-      for (let incId in activeIncidents) {
-          let inc = activeIncidents[incId];
+      
+      const getUrgWeight = (u) => {
+          if (u === 'Crítica') return 4;
+          if (u === 'Alta') return 3;
+          if (u === 'Média') return 2;
+          if (u === 'Baixa') return 1;
+          return 0;
+      };
+
+      const sortedIncidents = Object.values(activeIncidents).sort((a, b) => {
+          return getUrgWeight(b.urgency) - getUrgWeight(a.urgency);
+      });
+
+      for (let inc of sortedIncidents) {
           if (inc.pendingTypes && inc.pendingTypes.includes(typeId)) {
               const idx = inc.pendingTypes.indexOf(typeId);
               inc.pendingTypes.splice(idx, 1);
@@ -314,7 +326,7 @@
               v.incidentId = inc.id;
               inc.assignedIds.push(v.id);
               
-              addLog(`⚡ <b>${v.id}</b> designada da fila de espera para a Ocorrência #${inc.id}.`, 'dispatch');
+              addLog(`⚡ <b>${v.id}</b> designada da fila de espera para a Ocorrência #${inc.id} (${inc.urgency || 'Normal'}).`, 'dispatch');
               
               const line = L.polyline([L.latLng(inc.lat, inc.lng), [v.lat, v.lng]], {color: v.typeConfig.color, dashArray: '5, 10', weight: 4, opacity: 0.8}).addTo(map);
               inc.lines.push(line);
