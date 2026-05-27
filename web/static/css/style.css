@@ -16,6 +16,9 @@ h3 { margin-top: 0; margin-bottom: 15px; color: #fff; font-size: 18px; border-bo
 .tab-content { display: none; flex-direction: column; flex-grow: 1; overflow-y: auto; }
 .tab-content.active { display: flex; }
 
+#tab-viaturas, #tab-gerenciar { overflow-y: hidden; }
+#fleet-list, #manage-list { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+
 .stats { display: flex; justify-content: space-between; margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;}
 .stat-item { text-align: center; }
 .stat-item span { display: block; font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 1px;}
@@ -76,7 +79,7 @@ textarea.popup-input { width: 100%; margin-top: 8px; background: #222; color: #f
 .status-retornando { background: #ffc107; color: #111; }
 .status-nolocal { background: #fd7e14; color: #111; }
 
-.filter-group { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;}
+.filter-group { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; flex-shrink: 0; }
 .filter-btn { flex: 1; padding: 6px 8px; background: #222; color: #aaa; border: 1px solid #444; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; white-space: nowrap; transition: 0.3s;}
 .filter-btn:hover { background: #333; color: #fff;}
 .filter-btn.active { background: #007BFF; color: white; border-color: #007BFF; box-shadow: 0 2px 8px rgba(0,123,255,0.4); }

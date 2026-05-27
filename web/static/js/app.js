@@ -122,6 +122,7 @@
         return `
         <div class="card" style="border-left: 4px solid ${inc.waitingManualClose ? '#28a745' : '#ff6b6b'}">
             <div class="card-title" style="color: ${inc.waitingManualClose ? '#28a745' : '#ff6b6b'}">🚨 Ocorrência #${inc.id} ${inc.waitingManualClose ? '(Controlada)' : ''}</div>
+            <div class="card-detail">Urgência: <span style="font-weight: bold; color: #ff6b6b;">${inc.urgency || 'Não informada'}</span></div>
             <div class="card-detail">Descrição: <span style="color: #ffc107; font-weight: normal;">"${inc.desc}"</span></div>
             <div class="card-detail" style="margin-top: 5px;">Unidades Designadas: <br><span style="display:inline-block; margin-top:3px; line-height: 1.4;">${assignedHTML || '<i>Nenhuma</i>'}</span></div>
             ${pendingText}
@@ -479,13 +480,19 @@
         const popupContent = `
             <div style="text-align: center; width: 220px;">
                 <b style="color: #ff6b6b; font-size: 14px;">Registrar Incidente</b><br>
-                <div class="checkbox-group">
-                  <label class="checkbox-label"><input type="checkbox" class="inc-cb" value="0"> 🚓 Polícia</label>
-                  <label class="checkbox-label"><input type="checkbox" class="inc-cb" value="1"> 🚒 Bombeiros</label>
-                  <label class="checkbox-label"><input type="checkbox" class="inc-cb" value="2" checked> 🚑 Ambulância</label>
+                <select id="incident-urgency" class="popup-input" style="margin-top: 10px; margin-bottom: 5px; width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.1); padding: 5px; border-radius: 4px;">
+                    <option value="Baixa">🟢 Baixa</option>
+                    <option value="Média">🟡 Média</option>
+                    <option value="Alta">🟠 Alta</option>
+                    <option value="Crítica">🔴 Crítica</option>
+                </select>
+                <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; text-align: left; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 5px;">
+                  <label style="font-size: 12px; display: flex; justify-content: space-between; align-items: center;">🚓 Polícia <input type="number" id="inc-qtd-0" min="0" max="10" value="0" style="width: 40px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; text-align: center;"></label>
+                  <label style="font-size: 12px; display: flex; justify-content: space-between; align-items: center;">🚒 Bombeiros <input type="number" id="inc-qtd-1" min="0" max="10" value="0" style="width: 40px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; text-align: center;"></label>
+                  <label style="font-size: 12px; display: flex; justify-content: space-between; align-items: center;">🚑 Ambulância <input type="number" id="inc-qtd-2" min="0" max="10" value="1" style="width: 40px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; text-align: center;"></label>
                 </div>
-                <textarea id="incident-desc" class="popup-input" placeholder="Detalhes..."></textarea>
-                <button class="btn-danger" style="margin-top: 10px;" onclick="confirmIncident(${lat}, ${lng})">Confirmar e Despachar</button>
+                <textarea id="incident-desc" class="popup-input" placeholder="Detalhes..." style="width: 100%; box-sizing: border-box;"></textarea>
+                <button class="btn-danger" style="margin-top: 10px; width: 100%;" onclick="confirmIncident(${lat}, ${lng})">Confirmar e Despachar</button>
             </div>
         `;
 
@@ -497,20 +504,48 @@
     }
   });
 
-  window.confirmIncident = async function(lat, lng, forcedTypes = null, forcedDesc = null) {
-    const checkedBoxes = forcedTypes !== null 
-        ? forcedTypes 
-        : Array.from(document.querySelectorAll('.inc-cb:checked')).map(cb => parseInt(cb.value));
-    
-    if (checkedBoxes.length === 0) {
-        showToast("⚠️ Selecione pelo menos um tipo de viatura para atender a ocorrência.", "error");
-        return;
+  window.confirmIncident = async function(lat, lng, forcedTypes = null, forcedDesc = null, forcedUrg = null) {
+    let checkedBoxes = [];
+    if (forcedTypes !== null) {
+        checkedBoxes = forcedTypes;
+    } else {
+        for (let i = 0; i <= 2; i++) {
+            const el = document.getElementById('inc-qtd-' + i);
+            if (el) {
+                const count = parseInt(el.value) || 0;
+                for (let j = 0; j < count; j++) {
+                    checkedBoxes.push(i);
+                }
+            }
+        }
     }
-
+    
     let finalDesc = forcedDesc;
+    let finalUrg = forcedUrg;
     if (finalDesc === null) {
         const descInput = document.getElementById('incident-desc');
         finalDesc = descInput && descInput.value.trim() !== "" ? descInput.value.trim() : "Sem descrição";
+        
+        const urgInput = document.getElementById('incident-urgency');
+        finalUrg = urgInput ? urgInput.value : "Normal";
+    }
+
+    if (forcedTypes === null && finalUrg) {
+        let maxAllowed = 5;
+        if (finalUrg === 'Baixa') maxAllowed = 1;
+        else if (finalUrg === 'Média') maxAllowed = 2;
+        else if (finalUrg === 'Alta') maxAllowed = 3;
+        else if (finalUrg === 'Crítica') maxAllowed = 5;
+
+        if (checkedBoxes.length > maxAllowed) {
+            showToast(`⚠️ Urgência ${finalUrg} permite no máximo ${maxAllowed} viatura(s).`, "error");
+            return;
+        }
+    }
+
+    if (checkedBoxes.length === 0) {
+        showToast("⚠️ Solicite pelo menos uma viatura para atender a ocorrência.", "error");
+        return;
     }
 
     if (tempPopup && forcedTypes === null) { map.closePopup(tempPopup); }
@@ -584,7 +619,8 @@
     activeIncidents[incId] = {
         id: incId, marker: marker, lines: lines,
         desc: finalDesc, lat: lat, lng: lng, assignedIds: assignedIds,
-        waitingManualClose: false, pendingTypes: pendingTypes
+        waitingManualClose: false, pendingTypes: pendingTypes,
+        urgency: finalUrg
     };
     
     updateCounters(); 
@@ -692,7 +728,7 @@
           
           pendingTestIncidents[tId] = {
               id: tId, marker: marker, lat: finalLat, lng: finalLng, 
-              reqTypes: reqTypes, desc: `Simulação: Urgência ${urg}, ${victims} Vítimas`,
+              reqTypes: reqTypes, desc: `Simulação: ${victims} Vítimas`, urg: urg
           };
           
           if (isAutoAccept) {
@@ -714,7 +750,7 @@
       map.removeLayer(pInc.marker);
       delete pendingTestIncidents[tId];
       
-      confirmIncident(pInc.lat, pInc.lng, pInc.reqTypes, pInc.desc);
+      confirmIncident(pInc.lat, pInc.lng, pInc.reqTypes, pInc.desc, pInc.urg);
   };
 
   // Inicializa uma viatura de cada para povoar o mapa
